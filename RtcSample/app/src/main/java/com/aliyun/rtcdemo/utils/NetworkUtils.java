@@ -5,7 +5,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 
 /**
- * 网络状况的工具类
  * @author 34738
  */
 public class NetworkUtils {

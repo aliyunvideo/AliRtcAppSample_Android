@@ -4,9 +4,7 @@ import rx.Subscription;
 import rx.subscriptions.CompositeSubscription;
 
 /**
- * create by xzy483800 0n 2019/2/27
  * presenter的基类
- * @author xzy
  */
 public class AliRtcRxPresenter<T extends AliRtcBaseContract.BaseView> implements AliRtcBaseContract.BasePresenter<T>{
     protected T mView;

@@ -16,8 +16,8 @@ def glideVersion = "3.7.0"
 
 project.ext {
     android = [
-            compileSdkVersion: 26,
-            buildToolsVersion: "26.0.2",
+            compileSdkVersion: 28,
+            buildToolsVersion: "28.0.2",
             applicationId    : "com.aliyun.rtcdemo",
             minSdkVersion    : 16,
             targetSdkVersion : 25,

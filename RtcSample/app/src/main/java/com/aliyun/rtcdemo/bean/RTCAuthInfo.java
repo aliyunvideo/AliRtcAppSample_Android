@@ -4,7 +4,6 @@ import java.io.Serializable;
 
 /**
  * 服务器返回的包含加入频道信息的业务类
- * @author 34738
  */
 public class RTCAuthInfo implements Serializable {
 

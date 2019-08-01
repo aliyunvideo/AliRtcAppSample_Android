@@ -4,9 +4,7 @@ import com.aliyun.rtcdemo.base.AliRtcBaseContract;
 import com.aliyun.rtcdemo.bean.RTCAuthInfo;
 
 /**
- * create by xzy483800 0n 2019/2/27
  * view与presenter交互的contract管理类
- * @author xzy
  */
 public interface AliRtcLoginContract {
 

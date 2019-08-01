@@ -8,7 +8,6 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * 网络请求的帮助类
- * @author 34738
  */
 public class AliRtcRetrofitHelper {
 

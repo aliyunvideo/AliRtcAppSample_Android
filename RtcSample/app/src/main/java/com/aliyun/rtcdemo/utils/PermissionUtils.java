@@ -21,7 +21,6 @@ import java.util.Map;
 
 /**
  * 请求权限的工具类
- * @author 34738
  */
 public class PermissionUtils {
 
@@ -126,7 +125,6 @@ public class PermissionUtils {
             return;
         }
 
-        //TODO
         Log.d(TAG, "onRequestPermissionsResult permissions length:" + permissions.length);
         Map<String, Integer> perms = new HashMap<>();
 
@@ -158,7 +156,6 @@ public class PermissionUtils {
         final List<String> permissionsList = getNoGrantedPermission(activity, permissions, false);
         final List<String> shouldRationalePermissionsList = getNoGrantedPermission(activity, permissions,  true);
 
-        //TODO checkSelfPermission
         if (permissionsList == null || shouldRationalePermissionsList == null) {
             return;
         }
@@ -185,7 +182,6 @@ public class PermissionUtils {
 
 
     private static void shouldShowRationale(final Activity activity, final int requestCode, final String requestPermission, PermissionGrant permissionGrant) {
-        //TODO
         showMessageOKCancel(activity, "Rationale: need to open under permission by yourself",
                 new String[]{requestPermission},
                 (dialog, which) -> {
@@ -237,13 +233,10 @@ public class PermissionUtils {
 
         if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             Log.i(TAG, "onRequestPermissionsResult PERMISSION_GRANTED");
-            //TODO success, do something, can use callback
             permissionGrant.onPermissionGranted(requestCode);
 
         } else {
-            //TODO hint user this permission function
             Log.i(TAG, "onRequestPermissionsResult PERMISSION NOT GRANTED");
-            //TODO
             openSettingActivity(activity, "those permission need granted!", permissions, permissionGrant);
         }
 
@@ -277,7 +270,6 @@ public class PermissionUtils {
             String requestPermission = permissions[i];
 
 
-            //TODO checkSelfPermission
             int checkSelfPermission = -1;
             try {
                 checkSelfPermission = ActivityCompat.checkSelfPermission(activity, requestPermission);

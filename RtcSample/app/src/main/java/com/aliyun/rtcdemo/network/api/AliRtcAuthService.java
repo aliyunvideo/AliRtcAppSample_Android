@@ -8,7 +8,6 @@ import rx.Observable;
 
 /**
  * 请求网络的服务
- * @author 34738
  */
 public interface AliRtcAuthService {
 

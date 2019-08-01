@@ -1,6 +1,6 @@
 package com.aliyun.rtcdemo.network;
 
-import com.aliyun.rtcdemo.AliRtcNovaApplication;
+import com.aliyun.rtcdemo.AliRtcApplication;
 import com.aliyun.rtcdemo.utils.AliRtcConstants;
 import com.aliyun.rtcdemo.utils.NetworkUtils;
 import com.facebook.stetho.okhttp3.StethoInterceptor;
@@ -28,7 +28,6 @@ import okhttp3.logging.HttpLoggingInterceptor;
 
 /**
  * 联网的管理类
- * @author 34738
  */
 public class AliRtcOkHttpClientManager {
     private static final String TAG = AliRtcOkHttpClientManager.class.getName();
@@ -51,7 +50,7 @@ public class AliRtcOkHttpClientManager {
             HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
             interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
             //设置Http缓存
-            Cache cache = new Cache(new File(AliRtcNovaApplication.getInstance().getCacheDir(), "HttpCache"), 1024 * 1024 * 10);
+            Cache cache = new Cache(new File(AliRtcApplication.getInstance().getCacheDir(), "HttpCache"), 1024 * 1024 * 10);
             OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient().newBuilder();
             okHttpClientBuilder
                     .cache(cache)
@@ -122,8 +121,6 @@ public class AliRtcOkHttpClientManager {
         public Response intercept(Chain chain) throws IOException {
             Request originalRequest = chain.request();
             Request requestWithUserAgent = originalRequest.newBuilder()
-                    .removeHeader("User-Agent")
-                    .addHeader("User-Agent", AliRtcConstants.COMMON_UA_STR)
                     .build();
             return chain.proceed(requestWithUserAgent);
         }
@@ -141,7 +138,7 @@ public class AliRtcOkHttpClientManager {
             // 无网络时，设置超时为1天
             int maxStale = 60 * 60 * 24;
             Request request = chain.request();
-            if (NetworkUtils.isNetworkAvailable(AliRtcNovaApplication.getInstance())) {
+            if (NetworkUtils.isNetworkAvailable(AliRtcApplication.getInstance())) {
                 //有网络时只从网络获取
                 request = request.newBuilder().cacheControl(CacheControl.FORCE_NETWORK).build();
             } else {
@@ -149,7 +146,7 @@ public class AliRtcOkHttpClientManager {
                 request = request.newBuilder().cacheControl(CacheControl.FORCE_CACHE).build();
             }
             Response response = chain.proceed(request);
-            if (NetworkUtils.isNetworkAvailable(AliRtcNovaApplication.getInstance())) {
+            if (NetworkUtils.isNetworkAvailable(AliRtcApplication.getInstance())) {
                 response = response.newBuilder()
                         .removeHeader("Pragma")
                         .header("Cache-Control", "public, max-age=" + maxAge)

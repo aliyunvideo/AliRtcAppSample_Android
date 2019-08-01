@@ -12,9 +12,7 @@ import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 
 /**
- * create by xzy483800 0n 2019/2/27
  * 登录activity的presenter类，进行网络和view的交互
- * @author xzy
  */
 public class AliRtcLoginPresenter extends AliRtcRxPresenter<AliRtcLoginContract.view> implements
     AliRtcLoginContract.Present<AliRtcLoginContract.view>{

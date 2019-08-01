@@ -1,9 +1,7 @@
 package com.aliyun.rtcdemo.base;
 
 /**
- * create by xzy483800 0n 2019/2/27
  *  管理view与presenter交互的基类
- * @author xzy
  */
 public interface AliRtcBaseContract {
 
