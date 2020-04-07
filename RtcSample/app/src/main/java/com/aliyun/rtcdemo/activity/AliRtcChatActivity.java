@@ -4,16 +4,16 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.PixelFormat;
-import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
-import android.view.View;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.alivc.rtc.AliRtcAuthInfo;
@@ -22,16 +22,10 @@ import com.alivc.rtc.AliRtcEngineEventListener;
 import com.alivc.rtc.AliRtcEngineNotify;
 import com.alivc.rtc.AliRtcRemoteUserInfo;
 import com.aliyun.rtcdemo.R;
-import com.aliyun.rtcdemo.base.BaseActivity;
+import com.aliyun.rtcdemo.adapter.BaseRecyclerViewAdapter;
+import com.aliyun.rtcdemo.adapter.ChartUserAdapter;
 import com.aliyun.rtcdemo.bean.ChartUserBean;
-import com.aliyun.rtcdemo.bean.RTCAuthInfo;
-import com.aliyun.rtcdemo.service.ForegroundService;
-import com.aliyun.rtcdemo.utils.AliRtcConstants;
-import com.aliyun.rtcdemo.utils.AppUtils;
-import com.aliyun.rtcdemo.utils.DensityUtils;
 
-import org.webrtc.alirtcInterface.AliParticipantInfo;
-import org.webrtc.alirtcInterface.AliSubscriberInfo;
 import org.webrtc.sdk.SophonSurfaceView;
 
 import static com.alivc.rtc.AliRtcEngine.AliRtcAudioTrack.AliRtcAudioTrackNo;
@@ -40,28 +34,29 @@ import static com.alivc.rtc.AliRtcEngine.AliRtcVideoTrack.AliRtcVideoTrackBoth;
 import static com.alivc.rtc.AliRtcEngine.AliRtcVideoTrack.AliRtcVideoTrackCamera;
 import static com.alivc.rtc.AliRtcEngine.AliRtcVideoTrack.AliRtcVideoTrackNo;
 import static com.alivc.rtc.AliRtcEngine.AliRtcVideoTrack.AliRtcVideoTrackScreen;
-import static com.aliyun.rtcdemo.utils.AliRtcConstants.SOPHON_RESULT_SIGNAL_HEARTBEAT_TIMEOUT;
-import static com.aliyun.rtcdemo.utils.AliRtcConstants.SOPHON_SERVER_ERROR_POLLING;
-import static com.aliyun.rtcdemo.utils.AliRtcConstants.VIDEO_INFO_KEYS;
+import static org.webrtc.alirtcInterface.ErrorCodeEnum.ERR_ICE_CONNECTION_HEARTBEAT_TIMEOUT;
+import static org.webrtc.alirtcInterface.ErrorCodeEnum.ERR_SESSION_REMOVED;
 
 /**
  * 音视频通话的activity
  */
-public class AliRtcChatActivity extends BaseActivity implements View.OnClickListener {
+public class AliRtcChatActivity extends AppCompatActivity {
     private static final String TAG = AliRtcChatActivity.class.getName();
 
-    /**
-     * 用户名
-     */
-    String mUsername;
-    /**
-     * 频道名
-     */
-    String mChannel;
-    /**
-     * rtcAuthInfo，本地用户加入房间的时候返回的json
-     */
-    RTCAuthInfo mRtcAuthInfo;
+
+    public static final int CAMERA = 1001;
+    public static final int SCREEN = 1002;
+
+    public static final String[] VIDEO_INFO_KEYS = {"Width", "Height", "FPS", "LossRate"};
+
+    private static final int PERMISSION_REQ_ID = 0x0002;
+
+    private static final String[] REQUESTED_PERMISSIONS = {
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.CAMERA,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
+
     /**
      * 本地流播放view
      */
@@ -74,61 +69,64 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
      * 前台服务的Intent
      */
     private Intent mForeServiceIntent;
-    /**
-     * 权限判断
-     */
-    private boolean mGrantPermission;
-    /**
-     * 数据集
-     */
-    private Bundle mBundle;
+
     /**
      * 承载远程User的Adapter
      */
     private ChartUserAdapter mUserListAdapter;
-    private boolean mIsAudioCapture;
-    private boolean mIsAudioPlay;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.alirtc_activity_chat);
-        // 获取上个页面附带的参数
-        getIntentData();
         // 初始化界面上的view
         initView();
-        // 初始化引擎以及打开预览界面
-        initRTCEngineAndStartPreview();
-        // 打开加入房间前需要的参数
-        openJoinChannelBeforeNeedParams();
+        if (checkSelfPermission(REQUESTED_PERMISSIONS[0], PERMISSION_REQ_ID) &&
+                checkSelfPermission(REQUESTED_PERMISSIONS[1], PERMISSION_REQ_ID) &&
+                checkSelfPermission(REQUESTED_PERMISSIONS[2], PERMISSION_REQ_ID)) {
+            // 初始化引擎以及打开预览界面
+            initRTCEngineAndStartPreview();
+        }
     }
 
+    private boolean checkSelfPermission(String permission, int requestCode) {
+        if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, REQUESTED_PERMISSIONS, requestCode);
+            return false;
+        }
 
-    private void getIntentData() {
-        mBundle = getIntent().getExtras();
-        //用户名
-        mUsername = mBundle.getString("username");
-        //频道
-        mChannel = mBundle.getString("channel");
-        //音频采集
-        mIsAudioCapture = mBundle.getBoolean("audioCapture");
-        //音频播放
-        mIsAudioPlay = mBundle.getBoolean("audioPlay");
-        //rtcAuthInfo
-        mRtcAuthInfo = (RTCAuthInfo) mBundle.getSerializable("rtcAuthInfo");
+        return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String[] permissions, @NonNull int[] grantResults) {
+
+        if (requestCode == PERMISSION_REQ_ID) {
+            if (grantResults[0] != PackageManager.PERMISSION_GRANTED ||
+                    grantResults[1] != PackageManager.PERMISSION_GRANTED ||
+                    grantResults[2] != PackageManager.PERMISSION_GRANTED) {
+                showToast("Need permissions " + Manifest.permission.RECORD_AUDIO +
+                        "/" + Manifest.permission.CAMERA + "/" + Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                finish();
+                return;
+            }
+            initRTCEngineAndStartPreview();
+        }
+    }
+
+    private void showToast(final String msg) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void initView() {
-        TextView finish = findViewById(R.id.tv_finish);
-        TextView joinChannel = findViewById(R.id.tv_join_channel);
         mLocalView = findViewById(R.id.sf_local_view);
-        View parentView = findViewById(R.id.chart_parent);
-        if (AliRtcConstants.BRAND_OPPO.equalsIgnoreCase(Build.BRAND) && AliRtcConstants.MODEL_OPPO_R17.equalsIgnoreCase(
-                Build.MODEL)) {
-            parentView.setPadding(0, DensityUtils.dip2px(this, 20), 0, 0);
-        }
-        finish.setOnClickListener(this);
-        joinChannel.setOnClickListener(this);
         // 承载远程User的Adapter
         mUserListAdapter = new ChartUserAdapter();
         RecyclerView chartUserListView = findViewById(R.id.chart_content_userlist);
@@ -141,28 +139,12 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
         chartUserListView.setItemAnimator(anim);
         chartUserListView.setAdapter(mUserListAdapter);
         mUserListAdapter.setOnSubConfigChangeListener(mOnSubConfigChangeListener);
-        chartUserListView.addOnChildAttachStateChangeListener(new RecyclerView.OnChildAttachStateChangeListener() {
-            @Override
-            public void onChildViewAttachedToWindow(View view) {
-                Log.i(TAG, "onChildViewAttachedToWindow : " + view);
-
-            }
-
-            @Override
-            public void onChildViewDetachedFromWindow(View view) {
-                Log.i(TAG, "onChildViewDetachedFromWindow : " + view);
-            }
-        });
     }
 
     private void initRTCEngineAndStartPreview() {
-        if (this.checkPermission(Manifest.permission.CAMERA) || checkPermission(
-                Manifest.permission.MODIFY_AUDIO_SETTINGS)) {
-            Toast.makeText(this.getApplicationContext(), "需要开启权限才可进行观看", Toast.LENGTH_SHORT).show();
-            mGrantPermission = false;
-            return;
-        }
-        mGrantPermission = true;
+
+        //默认不开启兼容H5
+        AliRtcEngine.setH5CompatibleMode(0);
         // 防止初始化过多
         if (mAliRtcEngine == null) {
             //实例化,必须在主线程进行。
@@ -175,34 +157,9 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
             initLocalView();
             //开启预览
             startPreview();
+            //加入频道
+            joinChannel();
         }
-    }
-
-    private void openJoinChannelBeforeNeedParams() {
-        //开启音频采集
-        if (mIsAudioCapture) {
-            mAliRtcEngine.startAudioCapture();
-        }else {
-            mAliRtcEngine.stopAudioCapture();
-        }
-        //开启音频播放
-        if (mIsAudioPlay) {
-            mAliRtcEngine.startAudioPlayer();
-        }else {
-            mAliRtcEngine.stopAudioPlayer();
-        }
-    }
-
-    private boolean checkPermission(String permission) {
-        try {
-            int i = ActivityCompat.checkSelfPermission(this, permission);
-            if (i != PackageManager.PERMISSION_GRANTED) {
-                return true;
-            }
-        } catch (RuntimeException e) {
-            return true;
-        }
-        return false;
     }
 
     private void startPreview() {
@@ -235,22 +192,16 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
         if (mAliRtcEngine == null) {
             return;
         }
-        AliRtcAuthInfo userInfo = new AliRtcAuthInfo();
-        userInfo.setAppid(mRtcAuthInfo.data.appid);
-        userInfo.setNonce(mRtcAuthInfo.data.nonce);
-        userInfo.setTimestamp(mRtcAuthInfo.data.timestamp);
-        userInfo.setUserId(mRtcAuthInfo.data.userid);
-        userInfo.setGslb(mRtcAuthInfo.data.gslb);
-        userInfo.setToken(mRtcAuthInfo.data.token);
-        userInfo.setConferenceId(mChannel);
+        //从控制台生成的鉴权信息，具体内容请查阅:https://help.aliyun.com/document_detail/146833.html
+        AliRtcAuthInfo userInfo = ;
         /*
          *设置自动发布和订阅，只能在joinChannel之前设置
          *参数1    true表示自动发布；false表示手动发布
          *参数2    true表示自动订阅；false表示手动订阅
          */
-        mAliRtcEngine.setAutoPublish(true, true);
-        // 加入频道
-        mAliRtcEngine.joinChannel(userInfo, mUsername);
+        mAliRtcEngine.setAutoPublishSubscribe(true, true);
+        // 加入频道，参数1:鉴权信息 参数2:用户名
+        mAliRtcEngine.joinChannel(userInfo,userName);
 
     }
 
@@ -380,8 +331,8 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
      */
     private void processOccurError(int error) {
         switch (error) {
-            case SOPHON_SERVER_ERROR_POLLING:
-            case SOPHON_RESULT_SIGNAL_HEARTBEAT_TIMEOUT:
+            case ERR_ICE_CONNECTION_HEARTBEAT_TIMEOUT:
+            case ERR_SESSION_REMOVED:
                 noSessionExit(error);
                 break;
             default:
@@ -397,7 +348,7 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
     private void noSessionExit(int error) {
         runOnUiThread(() -> new AlertDialog.Builder(AliRtcChatActivity.this)
                 .setTitle("ErrorCode : " + error)
-                .setMessage("网络超时，请退出房间")
+                .setMessage("发生错误，请退出房间")
                 .setPositiveButton("确定", (dialog, which) -> {
                     dialog.dismiss();
                     onBackPressed();
@@ -407,41 +358,12 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
     }
 
     @Override
-    public void onClick(View view) {
-        switch (view.getId()) {
-            case R.id.tv_finish:
-                //销毁服务
-                if (null != mForeServiceIntent && AppUtils.isServiceRunning(this.getApplicationContext(),
-                        ForegroundService.class.getName())) {
-                    stopService(mForeServiceIntent);
-                }
-                //离会
-                if (mAliRtcEngine != null) {
-                    mAliRtcEngine.setRtcEngineNotify(null);
-                    mAliRtcEngine.setRtcEngineEventListener(null);
-                    mAliRtcEngine.stopPreview();
-                    mAliRtcEngine.leaveChannel();
-                    mAliRtcEngine = null;
-                }
-                finish();
-                break;
-            case R.id.tv_join_channel:
-                if (mGrantPermission) {
-                    joinChannel();
-                } else {
-                    setUpSplash();
-                }
-                break;
-            default:
-                break;
-        }
-    }
-
-    @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (mAliRtcEngine != null) {
+            mAliRtcEngine.destroy();
+        }
     }
-
 
     /**
      * 用户操作回调监听(回调接口都在子线程)
@@ -450,49 +372,17 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
 
         /**
          * 加入房间的回调
-         * @param i 结果码
+         * @param result 结果码
          */
         @Override
-        public void onJoinChannelResult(int i) {
+        public void onJoinChannelResult(int result) {
             runOnUiThread(() -> {
-                if (i == 0) {
-                    //开启前台服务
-                    if (null == mForeServiceIntent) {
-                        mForeServiceIntent = new Intent(AliRtcChatActivity.this.getApplicationContext(),
-                                ForegroundService.class);
-                        mForeServiceIntent.putExtras(mBundle);
-                    }
-                    startService(mForeServiceIntent);
+                if (result == 0) {
+                    showToast("加入频道成功");
+                } else {
+                    showToast("加入频道失败 错误码: " + result);
                 }
             });
-        }
-
-        /**
-         * 离开房间的回调
-         * @param i 结果码
-         */
-        @Override
-        public void onLeaveChannelResult(int i) {
-
-        }
-
-        /**
-         * 推流的回调
-         * @param i 结果码
-         * @param s publishId
-         */
-        @Override
-        public void onPublishResult(int i, String s) {
-
-        }
-
-        /**
-         * 取消发布本地流回调
-         * @param i 结果码
-         */
-        @Override
-        public void onUnpublishResult(int i) {
-
         }
 
         /**
@@ -518,24 +408,6 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
         @Override
         public void onUnsubscribeResult(int i, String s) {
             updateRemoteDisplay(s, AliRtcAudioTrackNo, AliRtcVideoTrackNo);
-        }
-
-        /**
-         * 网络状态变化的回调
-         * @param aliRtcNetworkQuality
-         */
-        @Override
-        public void onNetworkQualityChanged(AliRtcEngine.AliRtcNetworkQuality aliRtcNetworkQuality) {
-
-        }
-
-        /**
-         * 出现警告的回调
-         * @param i
-         */
-        @Override
-        public void onOccurWarning(int i) {
-
         }
 
         /**
@@ -592,80 +464,14 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
                                                  AliRtcEngine.AliRtcVideoTrack aliRtcVideoTrack) {
             updateRemoteDisplay(s, aliRtcAudioTrack, aliRtcVideoTrack);
         }
-
-        /**
-         * 订阅流回调，可以做UI及数据的更新
-         * @param s userid
-         * @param aliRtcAudioTrack 音频流
-         * @param aliRtcVideoTrack 相机流
-         */
-        @Override
-        public void onSubscribeChangedNotify(String s, AliRtcEngine.AliRtcAudioTrack aliRtcAudioTrack,
-                                             AliRtcEngine.AliRtcVideoTrack aliRtcVideoTrack) {
-
-        }
-
-        /**
-         * 订阅信息
-         * @param aliSubscriberInfos 订阅自己这边流的user信息
-         * @param i 当前订阅人数
-         */
-        @Override
-        public void onParticipantSubscribeNotify(AliSubscriberInfo[] aliSubscriberInfos, int i) {
-
-        }
-
-        /**
-         * 首帧的接收回调
-         * @param s callId
-         * @param s1 stream_label
-         * @param s2 track_label 分为video和audio
-         * @param i 时间
-         */
-        @Override
-        public void onFirstFramereceived(String s, String s1, String s2, int i) {
-
-        }
-
-        /**
-         * 首包的发送回调
-         * @param s callId
-         * @param s1 stream_label
-         * @param s2 track_label 分为video和audio
-         * @param i 时间
-         */
-        @Override
-        public void onFirstPacketSent(String s, String s1, String s2, int i) {
-
-        }
-
-        /**
-         * 取消订阅信息回调
-         * @param aliParticipantInfos 订阅自己这边流的user信息
-         * @param i 当前订阅人数
-         */
-        @Override
-        public void onParticipantUnsubscribeNotify(AliParticipantInfo[] aliParticipantInfos, int i) {
-
-        }
-
-        /**
-         * 被服务器踢出或者频道关闭时回调
-         * @param i
-         */
-        @Override
-        public void onBye(int i) {
-
-        }
     };
-
 
     private ChartUserAdapter.OnSubConfigChangeListener mOnSubConfigChangeListener = new ChartUserAdapter.OnSubConfigChangeListener() {
         @Override
         public void onFlipView(String uid, int flag, boolean flip) {
             AliRtcRemoteUserInfo userInfo = mAliRtcEngine.getUserInfo(uid);
             switch (flag) {
-                case AliRtcConstants.CAMERA:
+                case CAMERA:
                     if (userInfo != null) {
                         AliRtcEngine.AliVideoCanvas cameraCanvas = userInfo.getCameraCanvas();
                         if (cameraCanvas != null) {
@@ -674,7 +480,7 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
                         }
                     }
                     break;
-                case AliRtcConstants.SCREEN:
+                case SCREEN:
                     if (userInfo != null) {
                         AliRtcEngine.AliVideoCanvas screenCanvas = userInfo.getScreenCanvas();
                         if (screenCanvas != null) {
@@ -690,17 +496,17 @@ public class AliRtcChatActivity extends BaseActivity implements View.OnClickList
         public void onShowVideoInfo(String uid, int flag) {
             AliRtcEngine.AliRtcVideoTrack track = AliRtcVideoTrackNo;
             switch (flag) {
-                case AliRtcConstants.CAMERA:
+                case CAMERA:
                     track = AliRtcVideoTrackCamera;
                     break;
-                case AliRtcConstants.SCREEN:
+                case SCREEN:
                     track = AliRtcVideoTrackScreen;
                     break;
             }
             if (mAliRtcEngine != null) {
                 String result = mAliRtcEngine.getMediaInfoWithUserId(uid, track, VIDEO_INFO_KEYS);
 
-                Toast.makeText(AliRtcChatActivity.this,result,Toast.LENGTH_SHORT).show();
+                Toast.makeText(AliRtcChatActivity.this, result, Toast.LENGTH_SHORT).show();
             }
         }
     };
